@@ -30,17 +30,15 @@ def Posicao_e_Distancia(event, x, y, flags, param):
 		color = image[y,x]
 		if Ponto1 == None:
 			Ponto1 = (x,y)
-			print "test"
 		elif Ponto2 == None:
 			Ponto2 = (x,y)
 		if Ponto1 is not None and Ponto2 is not None:
 			cv2.line(raw, Ponto1, Ponto2, (0, 0, 255))
-		print("----------------------")		
-		#Identidica se a imagem eh em tons de cinza
-		if color[0] == color[1] == color[2]:
-			print"Posicao [X, Y]: ", (x, y), "Intensidade: ", color[0]
-		else:
-			print "Posicao [X, Y]: ", (x, y), "Cor: ", str(color)
+			distancia = (((Ponto2[0] - Ponto1[0]) ** 2) + ((Ponto2[1] - Ponto1[1]) ** 2))**0.5
+			print "----------------------"
+			print "Comprimento da reta em pixels: ", distancia
+			Ponto1 = None
+			Ponto2 = None
 
 
 
