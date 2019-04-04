@@ -33,7 +33,7 @@ def Posicao_e_Distancia(event, x, y, flags, param):
 		elif Ponto2 == None:
 			Ponto2 = (x,y)
 		if Ponto1 is not None and Ponto2 is not None:
-			cv2.line(raw, Ponto1, Ponto2, (0, 0, 255))
+			cv2.line(raw, Ponto1, Ponto2, (0, 0, 255), 3)
 			distancia = (((Ponto2[0] - Ponto1[0]) ** 2) + ((Ponto2[1] - Ponto1[1]) ** 2))**0.5
 			print "----------------------"
 			print "Comprimento da reta em pixels: ", distancia
