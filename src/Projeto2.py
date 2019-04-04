@@ -14,22 +14,36 @@ com arquivos de teste ou usar seus proṕrios arquivos
 import cv2
 import numpy as np
 color = None
-
+Ponto1 = None
+Ponto2 = None
 
 # Funcao 
-def Cor_e_Posicao(event, x, y, flags, param):
+def Posicao_e_Distancia(event, x, y, flags, param):
 	global clickPoint
 	global color
+	global Ponto1
+	global Ponto2
+	
 
 	if event == cv2.EVENT_LBUTTONDOWN:
 		clickPoint = [x, y]
 		color = image[y,x]
+		if Ponto1 == None:
+			Ponto1 = (x,y)
+			print "test"
+		elif Ponto2 == None:
+			Ponto2 = (x,y)
+		if Ponto1 is not None and Ponto2 is not None:
+			cv2.line(raw, Ponto1, Ponto2, (0, 0, 255))
 		print("----------------------")		
 		#Identidica se a imagem eh em tons de cinza
 		if color[0] == color[1] == color[2]:
 			print"Posicao [X, Y]: ", (x, y), "Intensidade: ", color[0]
 		else:
 			print "Posicao [X, Y]: ", (x, y), "Cor: ", str(color)
+
+
+
 
 
 # Selecao de qual requisito executar
@@ -60,7 +74,7 @@ if flag == 1 or flag == 2:
 		image = cv2.imread(file)
 	raw = image.copy()
 	cv2.namedWindow("Trabalho")
-	cv2.setMouseCallback("Trabalho", Cor_e_Posicao)
+	cv2.setMouseCallback("Trabalho", Posicao_e_Distancia)
 
 if flag == 1:
 	print "╔═══════════════════════════════╗"
@@ -122,7 +136,7 @@ if flag == 3 or flag == 4:
 	print "╚═══════════════════════════════╝\n"
 
 	cv2.namedWindow("Trabalho")
-	cv2.setMouseCallback("Trabalho", Cor_e_Posicao)
+	cv2.setMouseCallback("Trabalho", Posicao_e_Distancia)
 	# Verifica se foi possivel abrir o arquivo
 	if (cap.isOpened()== False): 
 	 	print("Erro ao abrir")
