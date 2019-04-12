@@ -8,9 +8,9 @@ import glob
 
 # MACROS
 CAMERA_ID = 0
-H_CENTERS = 12
-V_CENTERS = 9
-SCALE = 0.75
+H_CENTERS = 8
+V_CENTERS = 6
+SCALE = 1
 
 def fill_data(images, objpoints, imgpoints, debug=True, hcenters=H_CENTERS, vcenters=V_CENTERS):
     # This function fills the objpoints and imgpoints list the objpoints elements
@@ -85,6 +85,20 @@ if __name__ == "__main__":
     # Lists to store object points and image points from all the images.
     objpoints = [] # 3d point in real world space
     imgpoints = [] # 2d points in image plane.
+
+    cap = cv2.VideoCapture(0)
+    ret, frame = cap.read()
+    x = 0
+    while ret:
+        ret, frame = cap.read()
+        cv2.imshow('frame', frame)
+        key = cv2.waitKey(1)
+        if key == ord('c'):
+            nome = ".jpg"
+            cv2.imwrite(str(x)+nome,frame)
+            x = x+1
+        if key == ord('q'):
+            break
 
     images = glob.glob('*.jpg')
     gray = cv2.cvtColor(cv2.imread(images[0]), cv2.COLOR_BGR2GRAY)
