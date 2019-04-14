@@ -14,55 +14,59 @@ com arquivos de teste ou usar seus proṕrios arquivos
 import cv2
 import numpy as np
 color = None
-Ponto1 = None
-Ponto2 = None
+ponto_1 = None
+ponto_2 = None
 
 # Funcao 
 def Posicao_e_Distancia(event, x, y, flags, param):
 	global clickPoint
-	global color
-	global Ponto1
-	global Ponto2
+	global ponto_1
+	global ponto_2
+	global raw
 	
 
 	if event == cv2.EVENT_LBUTTONDOWN:
 		clickPoint = [x, y]
-		color = image[y,x]
-		if Ponto1 == None:
-			Ponto1 = (x,y)
-		elif Ponto2 == None:
-			Ponto2 = (x,y)
-		if Ponto1 is not None and Ponto2 is not None:
-			cv2.line(raw, Ponto1, Ponto2, (0, 0, 255), 3)
-			distancia = (((Ponto2[0] - Ponto1[0]) ** 2) + ((Ponto2[1] - Ponto1[1]) ** 2))**0.5
-			print "----------------------"
-			print "Comprimento da reta em pixels: ", distancia
-			Ponto1 = None
-			Ponto2 = None
+		if ponto_1 is None:
+			print("set first point")
+			ponto_1 = (x, y)
+			raw = image.copy()
+		elif ponto_2 is None:
+			ponto_2 = (x, y)
+		if ponto_1 is not None and ponto_2 is not None:
+			cv2.line(raw, ponto_1, ponto_2, (0, 0, 255), 3)
+			distancia = (((ponto_2[0] - ponto_1[0]) ** 2) + ((ponto_2[1] - ponto_1[1]) ** 2))**0.5
+			print("---------------------")
+			print("Comprimento da reta em pixels: ", distancia)
+			ponto_1 = None
+			ponto_2 = None
 
 
-
+image = cv2.imread("../data/test.jpg")
+raw = image.copy()
+cv2.namedWindow("Trabalho")
+cv2.setMouseCallback("Trabalho", Posicao_e_Distancia)
 
 
 # Selecao de qual requisito executar
-print "╔═══════════════════════════════════════╗"
-print "║	Escolha um dos requisitos	║"
-print "╠═══════════════════════╦═══════════════╣"
-print "║	Requisito 1	║ digite 1	║"
-print "║	Requisito 2	║ digite 2	║"
-print "║	Requisito 3	║ digite 3	║"
-print "║	Requisito 4	║ digite 4	║"
-print "║	Sair		║ digite 0	║"
+print( "╔═══════════════════════════════════════")
+print( "║	Escolha um dos requisitos	")
+print( "╠═══════════════════════╦═══════════════")
+print( "║	Requisito 1	║ digite 1	")
+print( "║	Requisito 2	║ digite 2	")
+print( "║	Requisito 3	║ digite 3	")
+print( "║	Requisito 4	║ digite 4	")
+print( "║	Sair		║ digite 0	")
 flag = input("╚═══════════════════════╩═══════════════╝\n")
-
+"""
 if flag == 1 or flag == 2:
-	print "╔═══════════════════════════════════════╗"
-	print "║	Escolha o arquivo de entrada	║"
-	print "╠═════════════════════╦═════════════════╣"
-	print "║ Imagem Colorida     ║ digite 1	║"
-	print "║ Escolher arquivo    ║ nome do arquivo	║"
-	print "║	Sair	      ║ digite 0	║"
-	file = raw_input("╚═════════════════════╩═════════════════╝\n")
+	print( "╔═══════════════════════════════════════")
+	print( "║	Escolha o arquivo de entrada	")
+	print( "╠═════════════════════╦═════════════════")
+	print( "║ Imagem Colorida     ║ digite 1	")
+	print( "║ Escolher arquivo    ║ nome do arquivo	")
+	print( "║	Sair	      ║ digite 0	")
+	file = input("╚═════════════════════╩═════════════════╝\n")
 	if file == '0':
 		cv2.destroyAllWindows()
 		flag = 0
@@ -73,101 +77,22 @@ if flag == 1 or flag == 2:
 	raw = image.copy()
 	cv2.namedWindow("Trabalho")
 	cv2.setMouseCallback("Trabalho", Posicao_e_Distancia)
-
+"""
 if flag == 1:
-	print "╔═══════════════════════════════╗"
-	print "║	Para sair pressione 'q'	║"
-	print "╚═══════════════════════════════╝\n"
+	print( "╔═══════════════════════════════")
+	print( "║	Para sair pressione 'q'	")
+	print( "╚═══════════════════════════════╝\n")
 	while True:	
 		cv2.imshow("Trabalho", raw)
 		if cv2.waitKey(25) & 0xFF == ord('q'):
 			cv2.destroyAllWindows()
 			break
 
-elif flag == 2:
-	while True:
-		cv2.imshow("Trabalho", raw)
-		if color is not None:
-			# Separa as 3 cores
-			R = raw[:, :, 0].astype(np.float32)
-			G = raw[:, :, 1].astype(np.float32)
-			B = raw[:, :, 2].astype(np.float32)
-			raw = image.copy()
-			# Calcula quais pixels serão marcados com base na distância euclidiana para imagens coloridas
-			if color[0] == color[1] == color[2]:
-				euclidiano = ((R - color[0]) ** 2) + ((G - color[1]) ** 2) + ((B - color[2]) ** 2)
-				mask = euclidiano < (13 ** 2)
-			# Calcula a diferenca de intensidade para imagens em tons de cinza
-			else:
-				diferenca = abs(R - color[0])
-				mask = diferenca < 13
-			# Colore os pixels
-			raw[np.where(mask)] = [0,0,255]
-			color = None
-		if cv2.waitKey(25) & 0xFF == ord('q'):
-			cv2.destroyAllWindows()
-			break
-
-elif flag == 3:
-	print "╔═══════════════════════════════════════╗"
-	print "║	Escolha o arquivo de entrada	║"
-	print "╠════════════════════╦══════════════════╣"
-	print "║ Vídeo Colorido     ║ digite 1		║"
-	print "║ Escolher Arquivo   ║ nome do Arquivo 	║"
-	print "║	Sair	     ║ digite 0		║"
-	file = raw_input("╚════════════════════╩══════════════════╝\n")
-	if file == '0':
+while True:
+	cv2.imshow("Trabalho", raw)
+	if cv2.waitKey(25) & 0xFF == ord('q'):
 		cv2.destroyAllWindows()
-		flag = 0
-	elif file == '1':
-		cap = cv2.VideoCapture('../data/Test.avi')
-	else:
-		cap = cv2.VideoCapture(file)
-
-
-elif flag == 4:
-	cap = cv2.VideoCapture(0)
-
-if flag == 3 or flag == 4:
-	print "╔═══════════════════════════════╗"
-	print "║	Para sair pressione 'q'	║"
-	print "╚═══════════════════════════════╝\n"
-
-	cv2.namedWindow("Trabalho")
-	cv2.setMouseCallback("Trabalho", Posicao_e_Distancia)
-	# Verifica se foi possivel abrir o arquivo
-	if (cap.isOpened()== False): 
-	 	print("Erro ao abrir")
-	 
-	# Le o video
-	while(cap.isOpened()):
-		ret, image = cap.read()
-		if ret == True:
-			raw = image.copy()
-			if color is not None:
-				# Separa as 3 cores
-				R = raw[:, :, 0].astype(np.float32)
-				G = raw[:, :, 1].astype(np.float32)
-				B = raw[:, :, 2].astype(np.float32)
-				raw = image.copy()
-				# Calcula quais pixels serão marcados com base na distância euclidiana para imagens coloridas
-				if color[0] == color[1] == color[2]:
-					euclidiano = ((R - color[0]) ** 2) + ((G - color[1]) ** 2) + ((B - color[2]) ** 2)
-					mask = euclidiano < (13 ** 2)
-				# Calcula a diferenca de intensidade para imagens em tons de cinza
-				else:
-					diferenca = abs(R - color[0])
-					mask = diferenca < 13
-				# Colore os pixels
-				raw[np.where(mask)] = [0,0,255]
-			cv2.imshow('Trabalho',raw)
-			if cv2.waitKey(25) & 0xFF == ord('q'):
-				cv2.destroyAllWindows()
-				break
-
-		else: 
-			break
-	cap.release()
+		break
 
 cv2.destroyAllWindows()
 
