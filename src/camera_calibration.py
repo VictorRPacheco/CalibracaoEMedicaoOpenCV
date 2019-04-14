@@ -12,6 +12,7 @@ H_CENTERS = 8
 V_CENTERS = 6
 SCALE = 1
 
+
 def fill_data(images, objpoints, imgpoints, debug=True, hcenters=H_CENTERS, vcenters=V_CENTERS):
     # This function fills the objpoints and imgpoints list the objpoints elements
     # will be overwritten in the future
@@ -58,7 +59,7 @@ def store_matrices(mat_x, mat_y, file_name):
 
 def get_error(objp, imgpoints, rvecs, tvecs, mtx, distortion_vector):
     mean_error = 0
-    for i in xrange(len(objpoints)):
+    for i in range(len(objpoints)):
         imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], mtx, distortion_vector)
         error = cv2.norm(imgpoints[i],imgpoints2, cv2.NORM_L2)/len(imgpoints2)
         mean_error += error
@@ -80,11 +81,12 @@ def show_result(mapx, mapy, cam_id=CAMERA_ID):
 
     cv2.destroyWindow('Undistorted')
 
+
 if __name__ == "__main__":
 
     # Lists to store object points and image points from all the images.
-    objpoints = [] # 3d point in real world space
-    imgpoints = [] # 2d points in image plane.
+    objpoints = []  # 3d point in real world space
+    imgpoints = []  # 2d points in image plane.
 
     cap = cv2.VideoCapture(0)
     ret, frame = cap.read()
@@ -95,30 +97,30 @@ if __name__ == "__main__":
         key = cv2.waitKey(1)
         if key == ord('c'):
             nome = ".jpg"
-            cv2.imwrite(str(x)+nome,frame)
+            cv2.imwrite(str(x)+nome, frame)
             x = x+1
         if key == ord('q'):
             break
-
+    cap.release()
     images = glob.glob('*.jpg')
     gray = cv2.cvtColor(cv2.imread(images[0]), cv2.COLOR_BGR2GRAY)
 
     fill_data(images, objpoints, imgpoints)
 
-    print "Calculating correction matrices"
-    ret, mtx, distortion_vector, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
+    print("Calculating correction matrices")
+    ret, mtx, distortion_vector, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
 
-    h, w =  gray.shape
+    h, w = gray.shape
     # output image size after the lens correction
     nh, nw = int(SCALE * h), int(SCALE * w)
 
-    newcameramtx, roi=cv2.getOptimalNewCameraMatrix(mtx, distortion_vector, (w,h), 1, (nw,nh))
+    newcameramtx, roi=cv2.getOptimalNewCameraMatrix(mtx, distortion_vector, (w,h), 1, (nw, nh))
     # get undistorion maps
-    mapx,mapy = cv2.initUndistortRectifyMap(mtx, distortion_vector, None, newcameramtx, (nw,nh), 5)
+    mapx, mapy = cv2.initUndistortRectifyMap(mtx, distortion_vector, None, newcameramtx, (nw, nh), 5)
 
     store_matrices(mapx, mapy, "camera_matrices.json")
 
-    print "STD Error:", get_error(objpoints, imgpoints, rvecs, tvecs, mtx, distortion_vector)
+    print("STD Error:", get_error(objpoints, imgpoints, rvecs, tvecs, mtx, distortion_vector))
 
-    print "Showing the result"
+    print("Showing the result")
     show_result(mapx, mapy)
