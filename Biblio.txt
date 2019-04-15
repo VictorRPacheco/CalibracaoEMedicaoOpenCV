@@ -3,3 +3,5 @@ http://lia.facom.ufms.br/ararabots/2018/05/calibracao-de-camera-utilizando-openc
 https://stackoverflow.com/questions/44056880/how-to-read-write-a-matrix-from-a-persistent-xml-yaml-file-in-opencv-3-with-pyth
 # Como calibrar a camera?
 https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_calib3d/py_calibration/py_calibration.html
+# Calcular extrinsecos
+solvePnP
