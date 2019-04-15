@@ -108,4 +108,7 @@ venv.bak/
 #IDE config files
 .idea/
 
+# camera configuration files
+*.xml
+src/*.jpg
 
