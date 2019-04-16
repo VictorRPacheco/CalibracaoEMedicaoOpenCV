@@ -74,14 +74,12 @@ def fill_data(images, objpoints, imgpoints, debug=True, hcenters=H_CENTERS, vcen
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
     objp = np.zeros((hcenters * vcenters, 3), np.float32)
     objp[:, :2] = np.mgrid[0:hcenters, 0:vcenters].T.reshape(-1, 2)
-
     for fname in images:
         gray = cv2.imread(fname, cv2.IMREAD_GRAYSCALE)
         if debug:
             img = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
         # Find the chessboard centers
         corners_were_found, corners = cv2.findChessboardCorners(gray, (hcenters, vcenters), None)
-
         if corners_were_found:
             objpoints.append(objp)
             # refines de corner locations
@@ -90,18 +88,31 @@ def fill_data(images, objpoints, imgpoints, debug=True, hcenters=H_CENTERS, vcen
 
             if debug:
                 cv2.drawChessboardCorners(img, (hcenters, vcenters), corners, corners_were_found)
-
         if debug:
             cv2.imshow('window', img)
             cv2.waitKey(1000)
-
     if debug:
         cv2.destroyWindow('window')
 
+def get_extrinsics(image, cam_mat, dist, hcenters=H_CENTERS, vcenters=V_CENTERS):
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+    objpoints = np.zeros((hcenters * vcenters, 3), np.float32)
+    objpoints[:, :2] = np.mgrid[0:hcenters*27:27, 0:vcenters*27:27].T.reshape(-1, 2)
+    print(objpoints)
+    gray = cv2.imread(image, cv2.IMREAD_GRAYSCALE)
+    # Find the chessboard centers
+    corners_were_found, corners = cv2.findChessboardCorners(gray, (hcenters, vcenters), None)
+    if corners_were_found:
+        # refines de corner locations
+        corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
+        ret, r, t = cv2.solvePnP(objpoints, corners, cam_mat, dist)
 
-def store_matrices(intrisics, distortion, n=0):
+    return r, t
+
+
+def store_matrices(intrinsics, distortion, n=0):
     mtx_F = cv2.FileStorage("intrisics_"+str(n)+".xml", cv2.FILE_STORAGE_WRITE)
-    mtx_F.write("F", intrisics)
+    mtx_F.write("F", intrinsics)
     mtx_F.release()
     mtx_dist = cv2.FileStorage("distortion_"+str(n)+".xml", cv2.FILE_STORAGE_WRITE)
     mtx_dist.write("DIST", distortion)
@@ -111,7 +122,7 @@ def store_matrices(intrisics, distortion, n=0):
 def get_error(objp, imgpoints, rvecs, tvecs, mtx, distortion_vector):
     mean_error = 0
     for i in range(len(objpoints)):
-        imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], mtx, distortion_vector)
+        imgpoints2, _ = cv2.projectPoints(objp[i], rvecs[i], tvecs[i], mtx, distortion_vector)
         error = cv2.norm(imgpoints[i],imgpoints2, cv2.NORM_L2)/len(imgpoints2)
         mean_error += error
     return mean_error/len(objpoints)
@@ -166,11 +177,39 @@ def get_num(elem):
     return int(elem.replace(".jpg", ""))
 
 
+def load_matrix(file, mat_name):
+    file_mtx = cv2.FileStorage(file, cv2.FILE_STORAGE_READ)
+    matrix = file_mtx.getNode(mat_name).mat()
+    file_mtx.release()
+    return matrix
+
+
+def get_matrices_mean(q, file_pattern, name):
+    mtxs=[]
+    for x in range(q):
+
+        matrix = load_matrix(file_pattern%x, name)
+        if x == 0:
+            mtxs.append(matrix)
+        else:
+            mtxs[0] += matrix
+    mtxs[0] /= q
+    return mtxs[0]
+
+
+def get_matrix_mean(q, matrix):
+    for x in range(1, q):
+        matrix[0] += matrix[x]
+    matrix[0] /= q
+    return matrix[0]
+
+
 if __name__ == "__main__":
 
     rets = []
-    mtxs = []
-    distortion_vectors = []
+    intrinsics = []
+    mtxs=[]
+    distortion_vector = []
     rvecss = []
     tvecss = []
 
@@ -183,28 +222,11 @@ if __name__ == "__main__":
     # output image size after the lens correction
     nh, nw = int(SCALE * h), int(SCALE * w)
 
-    intrisics_matrices_names = glob.glob("intrisics_*.xml")
+    intrinsics_matrices_names = glob.glob("intrisics_*.xml")
     distortion_vectors_names = glob.glob("distortion_*.xml")
-    if len(intrisics_matrices_names) > 4 and len(distortion_vectors_names) > 4:
-        print("have parameters")
-        for x in range(len(intrisics_matrices_names)):
-            file_mtx = cv2.FileStorage("intrisics_"+str(x)+".xml", cv2.FILE_STORAGE_READ)
-            matrix = file_mtx.getNode("F").mat()
-            file_mtx.release()
-            if x == 0:
-                mtxs.append(matrix)
-            else:
-                mtxs[0] += matrix
-        mtxs[0] /= len(intrisics_matrices_names)
-        for x in range(len(distortion_vectors_names)):
-            file_mtx = cv2.FileStorage("distortion_"+str(x)+".xml", cv2.FILE_STORAGE_READ)
-            matrix = file_mtx.getNode("DIST").mat()
-            file_mtx.release()
-            if x == 0:
-                distortion_vectors.append(matrix)
-            else:
-                distortion_vectors[0] += matrix
-        distortion_vectors[0] /= len(distortion_vectors_names)
+    if len(intrinsics_matrices_names) > 4 and len(distortion_vectors_names) > 4:
+        intrinsics = get_matrices_mean(len(intrinsics_matrices_names), "intrisics_%d.xml", "F")
+        distortion_vector = get_matrices_mean(len(distortion_vectors_names), "distortion_%d.xml", "DIST")
 
     else:
         # Lists to store object points and image points from all the images.
@@ -216,37 +238,37 @@ if __name__ == "__main__":
             images.sort(key=get_num)
             images = images[(5*x):(5*(x+1)):1]
             fill_data(images, objpoints, imgpoints, False)
-
             print("Calculating correction matrices")
-            ret, mtx, distortion_vector, rvecs, tvecs = \
+            ret, mtx, dist, rvecs, tvecs = \
                 cv2.calibrateCamera(objpoints,
                                     imgpoints,
                                     cv2.imread(images[0], cv2.IMREAD_GRAYSCALE).shape[::-1],
                                     None,
                                     None)
-
             rets.append(ret)
-            mtxs.append(mtx)
-            distortion_vectors.append(distortion_vector)
+            intrinsics.append(mtx)
+            distortion_vector.append(dist)
             rvecss.append(rvecs)
             tvecss.append(tvecs)
 
             print(mtx)
             # get undistorion maps
-            newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, distortion_vector, (w, h), 1, (nw, nh))
-            store_matrices(mtx, distortion_vector, x)
-            print("STD Error:", get_error(objpoints, imgpoints, rvecs, tvecs, mtx, distortion_vector))
-
-
-    print(mtxs[0])
-    newcameramtx, roi=cv2.getOptimalNewCameraMatrix(mtxs[0], distortion_vectors[0], (w,h), 1, (nw, nh))
-    mapx, mapy = cv2.initUndistortRectifyMap(mtxs[0], distortion_vectors[0], None, mtxs[0], (nw, nh), 5)
+            newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (nw, nh))
+            store_matrices(mtx, dist, x)
+            print("STD Error:", get_error(objpoints, imgpoints, rvecs, tvecs, mtx, dist))
+        intrinsics = get_matrix_mean(5, intrinsics)
+        distortion_vector = get_matrix_mean(5, distortion_vector)
+    print(mtxs)
+    newcameramtx, roi=cv2.getOptimalNewCameraMatrix(intrinsics, distortion_vector, (w, h), 1, (nw, nh))
+    mapx, mapy = cv2.initUndistortRectifyMap(intrinsics, distortion_vector, None, intrinsics, (nw, nh), 5)
 
     imgs = glob.glob("0.jpg")
 
-    r, rvecs, tvecs = cv2.solvePnP(objpoints, imgpoints, mtxs[0], distortion_vectors[0])
+    r, t = get_extrinsics("0.jpg", intrinsics, distortion_vector)
 
-    extrinsics = np.concatenate((rvecs, tvecs), axis=1)
+    extrinsics = np.concatenate((r, t), axis=1)
+
+    P = np.dot(intrinsics, extrinsics)
     print("Showing the result")
     # print(newcameramtx)
     show_result(mapx, mapy)
