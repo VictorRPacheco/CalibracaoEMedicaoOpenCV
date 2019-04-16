@@ -11,16 +11,24 @@ H_CENTERS = 8
 V_CENTERS = 6
 SCALE = 1
 
+pinv=None
+
 ponto_1_r = None
 ponto_2_r = None
+Ponto_1_r = None
+Ponto_2_r = None
 ponto_1 = None
 ponto_2 = None
+Ponto_1 = None
+Ponto_2 = None
 
 
 def Posicao_e_Distancia(event, x, y, flags, param):
     global clickPoint
     global ponto_1
     global ponto_2
+    global Ponto_1
+    global Ponto_2
     global raw
 
     if event == cv2.EVENT_LBUTTONDOWN:
@@ -30,20 +38,29 @@ def Posicao_e_Distancia(event, x, y, flags, param):
             ponto_1 = None
             ponto_2 = None
         if ponto_1 is None:
-            print("set first point")
             ponto_1 = (x, y)
+            print("set first point")
+            p1 = np.array([x, y, 1])
+            print(ponto_1)
+            Ponto_1 = np.dot(p1.T, pinv)
             image = raw.copy()
         elif ponto_2 is None:
-            ponto_2 = (x, y)
+            ponto_2 = (x,y)
+            p2 = np.array([x, y, 1])
+            Ponto_2 = np.dot(p2.T, pinv)
             distancia = (((ponto_2[0] - ponto_1[0]) ** 2) + ((ponto_2[1] - ponto_1[1]) ** 2)) ** 0.5
+            distancia_real = (((Ponto_2[0] - Ponto_1[0]) ** 2) + ((Ponto_2[1] - Ponto_1[1]) ** 2)) ** 0.5
             print("---------------------")
             print("Comprimento da reta em pixels: ", distancia)
+            print("Comprimento da reta em mm: ", distancia_real/1000)
 
 
 def Posicao_e_Distancia_raw(event, x, y, flags, param):
     global clickPoint
     global ponto_1_r
     global ponto_2_r
+    global Ponto_1_r
+    global Ponto_2_r
     global raw
 
     if event == cv2.EVENT_LBUTTONDOWN:
@@ -55,11 +72,19 @@ def Posicao_e_Distancia_raw(event, x, y, flags, param):
         if ponto_1_r is None:
             print("set first point")
             ponto_1_r = (x, y)
+            p1 = np.array([x, y, 1])
+            print(ponto_1_r)
+            Ponto_1_r = np.dot(p1.T, pinv)
+            image = raw.copy()
         elif ponto_2_r is None:
             ponto_2_r = (x, y)
+            p2 = np.array([x, y, 1])
+            Ponto_2_r = np.dot(p2.T, pinv)
             distancia = (((ponto_2_r[0] - ponto_1_r[0]) ** 2) + ((ponto_2_r[1] - ponto_1_r[1]) ** 2)) ** 0.5
+            distancia_real = (((Ponto_2_r[0] - Ponto_1_r[0]) ** 2) + ((Ponto_2_r[1] - Ponto_1_r[1]) ** 2)) ** 0.5
             print("---------------------")
             print("Comprimento da reta em pixels: ", distancia)
+            print("Comprimento da reta em mm: ", distancia_real/1000)
 
 cv2.namedWindow("Undistorted")
 cv2.setMouseCallback("Undistorted", Posicao_e_Distancia)
@@ -106,6 +131,7 @@ def get_extrinsics(image, cam_mat, dist, hcenters=H_CENTERS, vcenters=V_CENTERS)
         # refines de corner locations
         corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
         ret, r, t = cv2.solvePnP(objpoints, corners, cam_mat, dist)
+        r = cv2.Rodrigues(r)[0]
 
     return r, t
 
@@ -129,12 +155,14 @@ def get_error(objp, imgpoints, rvecs, tvecs, mtx, distortion_vector):
 
 
 def show_result(mapx, mapy, cam_id=CAMERA_ID):
-    cap = cv2.VideoCapture(cam_id)
-    ret, raw = cap.read()
+    # cap = cv2.VideoCapture(cam_id)
+    # ret, raw = cap.read()
+    ret = True
 
     while ret:
-        ret, raw = cap.read()
-        raw=cv2.flip(raw, 1)
+        # ret, raw = cap.read()
+        # raw=cv2.flip(raw, 1)
+        raw = cv2.imread("0.jpg")
         # Applies the undistorion
         u_raw = cv2.remap(raw, mapx, mapy, cv2.INTER_LINEAR)
         if ponto_1 is not None and ponto_2 is not None:
@@ -263,22 +291,15 @@ if __name__ == "__main__":
     mapx, mapy = cv2.initUndistortRectifyMap(intrinsics, distortion_vector, None, intrinsics, (nw, nh), 5)
 
     imgs = glob.glob("0.jpg")
-
     r, t = get_extrinsics("0.jpg", intrinsics, distortion_vector)
-
+    r = np.linalg.inv(r)
     extrinsics = np.concatenate((r, t), axis=1)
-
-    P = np.dot(intrinsics, extrinsics)
+    pinv = np.dot(intrinsics, extrinsics)
+    # P = np.concatenate((P, [[0, 0, 0, 1]]), axis=0)
+    # pinv = np.linalg.inv(P)
+    # pinv = np.delete(pinv, 3, 0)
+    print(pinv)
     print("Showing the result")
     # print(newcameramtx)
     show_result(mapx, mapy)
 
-def calculate_extrinsics(mtx, dist):
-    for fname in glob.glob('*.jpg'):
-        img = cv2.imread(fname)
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        ret, corners = cv2.findChessboardCorners(gray, (7, 6), None)
-        if ret == True:
-            corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
-            # Find the rotation and translation vectors.
-            ret, rvecs, tvecs = cv2.solvePnP(objp, corners2, mtx, dist)
