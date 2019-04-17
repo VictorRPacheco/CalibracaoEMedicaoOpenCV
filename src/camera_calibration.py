@@ -39,9 +39,7 @@ def Posicao_e_Distancia(event, x, y, flags, param):
             ponto_2 = None
         if ponto_1 is None:
             ponto_1 = (x, y)
-            print("set first point")
             p1 = np.array([x, y, 1])
-            print(ponto_1)
             Ponto_1 = np.dot(p1.T, pinv)
             image = raw.copy()
         elif ponto_2 is None:
@@ -70,7 +68,6 @@ def Posicao_e_Distancia_raw(event, x, y, flags, param):
             ponto_1_r = None
             ponto_2_r = None
         if ponto_1_r is None:
-            print("set first point")
             ponto_1_r = (x, y)
             p1 = np.array([x, y, 1])
             print(ponto_1_r)
@@ -80,8 +77,8 @@ def Posicao_e_Distancia_raw(event, x, y, flags, param):
             ponto_2_r = (x, y)
             p2 = np.array([x, y, 1])
             Ponto_2_r = np.dot(p2.T, pinv)
-            distancia = (((ponto_2_r[0] - ponto_1_r[0]) ** 2) + ((ponto_2_r[1] - ponto_1_r[1]) ** 2)) ** 0.5
             distancia_real = (((Ponto_2_r[0] - Ponto_1_r[0]) ** 2) + ((Ponto_2_r[1] - Ponto_1_r[1]) ** 2)) ** 0.5
+            distancia = (((ponto_2_r[0] - ponto_1_r[0]) ** 2) + ((ponto_2_r[1] - ponto_1_r[1]) ** 2)) ** 0.5
             print("---------------------")
             print("Comprimento da reta em pixels: ", distancia)
             print("Comprimento da reta em mm: ", distancia_real/1000)
@@ -93,23 +90,19 @@ cv2.setMouseCallback("Raw", Posicao_e_Distancia_raw)
 
 
 def fill_data(images, objpoints, imgpoints, debug=True, hcenters=H_CENTERS, vcenters=V_CENTERS):
-    # This function fills the objpoints and imgpoints list the objpoints elements
-    # will be overwritten in the future
-    # termination criteria
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
     objp = np.zeros((hcenters * vcenters, 3), np.float32)
-    objp[:, :2] = np.mgrid[0:hcenters, 0:vcenters].T.reshape(-1, 2)
+    objp[:, :2] = np.mgrid[0:hcenters * (27 / 1000):(27 / 1000), 0:vcenters * (27 / 1000):(27 / 1000)].T.reshape(
+        -1, 2)
     for fname in images:
         gray = cv2.imread(fname, cv2.IMREAD_GRAYSCALE)
         if debug:
             img = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
-        # Find the chessboard centers
         corners_were_found, corners = cv2.findChessboardCorners(gray, (hcenters, vcenters), None)
         if corners_were_found:
             objpoints.append(objp)
-            # refines de corner locations
-            corners = cv2.cornerSubPix(gray, corners, (11,11), (-1,-1), criteria)
-            imgpoints.append(corners)
+            corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
+            imgpoints.append(corners2)
 
             if debug:
                 cv2.drawChessboardCorners(img, (hcenters, vcenters), corners, corners_were_found)
@@ -119,21 +112,23 @@ def fill_data(images, objpoints, imgpoints, debug=True, hcenters=H_CENTERS, vcen
     if debug:
         cv2.destroyWindow('window')
 
-def get_extrinsics(image, cam_mat, dist, hcenters=H_CENTERS, vcenters=V_CENTERS):
+
+def get_extrinsics(image, cam_mat, dist, mapx, mapy, hcenters=H_CENTERS, vcenters=V_CENTERS):
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-    objpoints = np.zeros((hcenters * vcenters, 3), np.float32)
-    objpoints[:, :2] = np.mgrid[0:hcenters*27:27, 0:vcenters*27:27].T.reshape(-1, 2)
-    print(objpoints)
+    obj_points = np.zeros((hcenters * vcenters, 3), np.float32)
+    obj_points[:, :2] = np.mgrid[0:hcenters*(27/1000):(27/1000), 0:vcenters*(27/1000):(27/1000)].T.reshape(-1, 2)
     gray = cv2.imread(image, cv2.IMREAD_GRAYSCALE)
-    # Find the chessboard centers
+    # gray = cv2.remap(gray, mapx, mapy, cv2.INTER_LINEAR)
+    cv2.imshow("Undistorted", gray)
     corners_were_found, corners = cv2.findChessboardCorners(gray, (hcenters, vcenters), None)
+    print(corners_were_found)
     if corners_were_found:
         # refines de corner locations
-        corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
-        ret, r, t = cv2.solvePnP(objpoints, corners, cam_mat, dist)
-        r = cv2.Rodrigues(r)[0]
+        corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
+        ret, rot, t = cv2.solvePnP(obj_points, corners2, cam_mat, dist)
+        rot = cv2.Rodrigues(rot)[0]
 
-    return r, t
+    return rot, t
 
 
 def store_matrices(intrinsics, distortion, n=0):
@@ -162,7 +157,7 @@ def show_result(mapx, mapy, cam_id=CAMERA_ID):
     while ret:
         # ret, raw = cap.read()
         # raw=cv2.flip(raw, 1)
-        raw = cv2.imread("0.jpg")
+        raw = cv2.imread("1.jpg")
         # Applies the undistorion
         u_raw = cv2.remap(raw, mapx, mapy, cv2.INTER_LINEAR)
         if ponto_1 is not None and ponto_2 is not None:
@@ -186,6 +181,7 @@ def capture_five_pat(x):
     seq = x
     while ret and x < (seq+5):
         ret, raw = cap.read()
+        raw = cv2.flip(raw, 1)
         cv2.imshow(str(seq/5)+' sequência de calibração', raw)
         key = cv2.waitKey(1)
         if key == ord('c'):
@@ -195,9 +191,9 @@ def capture_five_pat(x):
                 cv2.imwrite(str(x) + nome, raw)
                 x = x + 1
         if key == ord('q'):
-            cv2.destroyWindow(str(seq // 5) + ' sequência de calibração')
+            cv2.destroyWindow(str(int(seq / 5)) + ' sequência de calibração')
             break
-    cv2.destroyWindow(str(seq//5)+' sequência de calibração')
+    cv2.destroyWindow(str(int(seq/5))+' sequência de calibração')
     cap.release()
 
 
@@ -261,11 +257,12 @@ if __name__ == "__main__":
         objpoints = []  # 3d point in real world space
         imgpoints = []  # 2d points in image plane.
         for x in range(0, 5):
-            capture_five_pat(5*x)
+            # capture_five_pat(5*x)
             images = glob.glob('[0-9]*.jpg')
             images.sort(key=get_num)
             images = images[(5*x):(5*(x+1)):1]
             fill_data(images, objpoints, imgpoints, False)
+
             print("Calculating correction matrices")
             ret, mtx, dist, rvecs, tvecs = \
                 cv2.calibrateCamera(objpoints,
@@ -273,33 +270,37 @@ if __name__ == "__main__":
                                     cv2.imread(images[0], cv2.IMREAD_GRAYSCALE).shape[::-1],
                                     None,
                                     None)
+            newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (nw, nh))
             rets.append(ret)
-            intrinsics.append(mtx)
+            intrinsics.append(newcameramtx)
             distortion_vector.append(dist)
             rvecss.append(rvecs)
             tvecss.append(tvecs)
 
-            print(mtx)
             # get undistorion maps
-            newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (nw, nh))
             store_matrices(mtx, dist, x)
             print("STD Error:", get_error(objpoints, imgpoints, rvecs, tvecs, mtx, dist))
+
         intrinsics = get_matrix_mean(5, intrinsics)
         distortion_vector = get_matrix_mean(5, distortion_vector)
-    print(mtxs)
-    newcameramtx, roi=cv2.getOptimalNewCameraMatrix(intrinsics, distortion_vector, (w, h), 1, (nw, nh))
-    mapx, mapy = cv2.initUndistortRectifyMap(intrinsics, distortion_vector, None, intrinsics, (nw, nh), 5)
 
-    imgs = glob.glob("0.jpg")
-    r, t = get_extrinsics("0.jpg", intrinsics, distortion_vector)
+    newcameramtx, roi=cv2.getOptimalNewCameraMatrix(intrinsics, distortion_vector, (w, h), 1, (nw, nh))
+    mapx, mapy = cv2.initUndistortRectifyMap(newcameramtx, distortion_vector, None, newcameramtx, (nw, nh), 5)
+
+    imgs = glob.glob("1.jpg")
+    r, t = get_extrinsics("1.jpg", newcameramtx, distortion_vector, mapx, mapy)
     r = np.linalg.inv(r)
     extrinsics = np.concatenate((r, t), axis=1)
     pinv = np.dot(intrinsics, extrinsics)
-    # P = np.concatenate((P, [[0, 0, 0, 1]]), axis=0)
-    # pinv = np.linalg.inv(P)
-    # pinv = np.delete(pinv, 3, 0)
-    print(pinv)
-    print("Showing the result")
-    # print(newcameramtx)
+    raw = cv2.imread("1.jpg")
+    # u_raw = cv2.remap(raw, mapx, mapy, cv2.INTER_LINEAR)
+    corners_were_found, corners = cv2.findChessboardCorners(cv2.cvtColor(raw, cv2.COLOR_BGR2GRAY),
+                                                            (H_CENTERS, V_CENTERS), None)
+    p1 = np.concatenate((corners[0,0],[1]))
+    p2 = np.concatenate((corners[1,0],[1]))
+    # raw = cv2.line(raw, (238, 94), (285, 96), (0, 0, 255), 2)
+    Ponto_1_r = np.dot(p1.T, pinv)
+    Ponto_2_r = np.dot(p2.T, pinv)
+    distancia_real = (((Ponto_2_r[0] - Ponto_1_r[0]) ** 2) + ((Ponto_2_r[1] - Ponto_1_r[1]) ** 2)) ** 0.5
+    print(distancia_real/1000)
     show_result(mapx, mapy)
-

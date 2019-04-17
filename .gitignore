@@ -111,4 +111,5 @@ venv.bak/
 # camera configuration files
 *.xml
 src/*.jpg
+old
 
