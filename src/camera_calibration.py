@@ -157,7 +157,7 @@ def show_result(mapx, mapy, cam_id=CAMERA_ID):
     while ret:
         # ret, raw = cap.read()
         # raw=cv2.flip(raw, 1)
-        raw = cv2.imread("1.jpg")
+        raw = cv2.imread("0.jpg")
         # Applies the undistorion
         u_raw = cv2.remap(raw, mapx, mapy, cv2.INTER_LINEAR)
         if ponto_1 is not None and ponto_2 is not None:
@@ -287,20 +287,30 @@ if __name__ == "__main__":
     newcameramtx, roi=cv2.getOptimalNewCameraMatrix(intrinsics, distortion_vector, (w, h), 1, (nw, nh))
     mapx, mapy = cv2.initUndistortRectifyMap(newcameramtx, distortion_vector, None, newcameramtx, (nw, nh), 5)
 
-    imgs = glob.glob("1.jpg")
-    r, t = get_extrinsics("1.jpg", newcameramtx, distortion_vector, mapx, mapy)
-    r = np.linalg.inv(r)
-    extrinsics = np.concatenate((r, t), axis=1)
+    imgs = glob.glob("0.jpg")
+    r, t = get_extrinsics("0.jpg", newcameramtx, distortion_vector, mapx, mapy)
+    r_inv = np.linalg.inv(r)
+    intrinsics_inv = np.linalg.inv(intrinsics)
+    # extrinsics = np.concatenate((r, t), axis=1)
+    extrinsics = r_inv
+    r_inv_tvec = np.dot(extrinsics, t)
+    # extrinsics = np.delete(extrinsics, 2, 1)
+    # print(extrinsics)
     pinv = np.dot(intrinsics, extrinsics)
-    raw = cv2.imread("1.jpg")
+    # pinv = np.linalg.inv(pinv)
+    raw = cv2.imread("0.jpg")
     # u_raw = cv2.remap(raw, mapx, mapy, cv2.INTER_LINEAR)
     corners_were_found, corners = cv2.findChessboardCorners(cv2.cvtColor(raw, cv2.COLOR_BGR2GRAY),
                                                             (H_CENTERS, V_CENTERS), None)
     p1 = np.concatenate((corners[0,0],[1]))
     p2 = np.concatenate((corners[1,0],[1]))
     # raw = cv2.line(raw, (238, 94), (285, 96), (0, 0, 255), 2)
-    Ponto_1_r = np.dot(p1.T, pinv)
-    Ponto_2_r = np.dot(p2.T, pinv)
+    Ponto_1_r = np.dot(p1, pinv)
+    print("Linha",r_inv_tvec[2])
+    Ponto_1_r = (0 + r_inv_tvec[2]) / Ponto_1_r[2] * Ponto_1_r - r_inv_tvec
+    print(Ponto_1_r)
+    Ponto_2_r = np.dot(p2, pinv)
+    Ponto_2_r = (0 + r_inv_tvec[2]) / Ponto_2_r[2] * Ponto_2_r - r_inv_tvec
     distancia_real = (((Ponto_2_r[0] - Ponto_1_r[0]) ** 2) + ((Ponto_2_r[1] - Ponto_1_r[1]) ** 2)) ** 0.5
-    print(distancia_real/1000)
+    print(distancia_real)
     show_result(mapx, mapy)
