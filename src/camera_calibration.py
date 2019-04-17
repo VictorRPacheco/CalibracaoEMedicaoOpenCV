@@ -93,13 +93,12 @@ def Posicao_e_Distancia_raw(event, x, y, flags, param):
             s = (0 + right[2]) / left[2]
             uv_scaled_2 = (s[0] * np.dot(intrinsics_inv, p2) - t.T)
             Ponto_2_r = np.dot(r_inv, uv_scaled_2.T)
-
-
             distancia_real = (((Ponto_2_r[0] - Ponto_1_r[0]) ** 2) + ((Ponto_2_r[1] - Ponto_1_r[1]) ** 2)) ** 0.5
             distancia = (((ponto_2_r[0] - ponto_1_r[0]) ** 2) + ((ponto_2_r[1] - ponto_1_r[1]) ** 2)) ** 0.5
             print("---------------------")
             print("Comprimento da reta em pixels: ", distancia)
             print("Comprimento da reta em mm: ", distancia_real*1000)
+
 
 cv2.namedWindow("Undistorted")
 cv2.setMouseCallback("Undistorted", Posicao_e_Distancia)
@@ -131,12 +130,11 @@ def fill_data(images, objpoints, imgpoints, debug=True, hcenters=H_CENTERS, vcen
         cv2.destroyWindow('window')
 
 
-def get_extrinsics(image, cam_mat, dist, mapx, mapy, hcenters=H_CENTERS, vcenters=V_CENTERS):
+def get_extrinsics(image, cam_mat, dist, hcenters=H_CENTERS, vcenters=V_CENTERS):
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
     obj_points = np.zeros((hcenters * vcenters, 3), np.float32)
     obj_points[:, :2] = np.mgrid[0:hcenters*(27/1000):(27/1000), 0:vcenters*(27/1000):(27/1000)].T.reshape(-1, 2)
     gray = cv2.imread(image, cv2.IMREAD_GRAYSCALE)
-    # gray = cv2.remap(gray, mapx, mapy, cv2.INTER_LINEAR)
     cv2.imshow("Undistorted", gray)
     corners_were_found, corners = cv2.findChessboardCorners(gray, (hcenters, vcenters), None)
     print(corners_were_found)
@@ -302,11 +300,11 @@ if __name__ == "__main__":
         intrinsics = get_matrix_mean(5, intrinsics)
         distortion_vector = get_matrix_mean(5, distortion_vector)
 
-    newcameramtx, roi=cv2.getOptimalNewCameraMatrix(intrinsics, distortion_vector, (w, h), 1, (nw, nh))
-    mapx, mapy = cv2.initUndistortRectifyMap(newcameramtx, distortion_vector, None, newcameramtx, (nw, nh), 5)
+    intrinsics, roi=cv2.getOptimalNewCameraMatrix(intrinsics, distortion_vector, (w, h), 1, (nw, nh))
+    mapx, mapy = cv2.initUndistortRectifyMap(intrinsics, distortion_vector, None, intrinsics, (nw, nh), 5)
 
     imgs = glob.glob("7.jpg")
-    r, t = get_extrinsics("7.jpg", newcameramtx, distortion_vector, mapx, mapy)
+    r, t = get_extrinsics("7.jpg", intrinsics, distortion_vector, mapx, mapy)
     r_inv = np.linalg.inv(r)
     intrinsics_inv = np.linalg.inv(intrinsics)
 
