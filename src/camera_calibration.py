@@ -173,7 +173,7 @@ def show_result(mapx, mapy, cam_id=CAMERA_ID):
     while ret:
         # ret, raw = cap.read()
         # raw=cv2.flip(raw, 1)
-        raw = cv2.imread("7.jpg")
+        raw = cv2.imread("3teste.jpg")
         # Applies the undistorion
         u_raw = cv2.remap(raw, mapx, mapy, cv2.INTER_LINEAR)
         if ponto_1 is not None and ponto_2 is not None:
@@ -273,7 +273,7 @@ if __name__ == "__main__":
         objpoints = []  # 3d point in real world space
         imgpoints = []  # 2d points in image plane.
         for x in range(0, 5):
-            # capture_five_pat(5*x)
+            capture_five_pat(5*x)
             images = glob.glob('[0-9]*.jpg')
             images.sort(key=get_num)
             images = images[(5*x):(5*(x+1)):1]
@@ -303,8 +303,8 @@ if __name__ == "__main__":
     intrinsics, roi=cv2.getOptimalNewCameraMatrix(intrinsics, distortion_vector, (w, h), 1, (nw, nh))
     mapx, mapy = cv2.initUndistortRectifyMap(intrinsics, distortion_vector, None, intrinsics, (nw, nh), 5)
 
-    imgs = glob.glob("7.jpg")
-    r, t = get_extrinsics("7.jpg", intrinsics, distortion_vector, mapx, mapy)
+    imgs = glob.glob("7teste.jpg")
+    r, t = get_extrinsics("7teste.jpg", intrinsics, distortion_vector)
     r_inv = np.linalg.inv(r)
     intrinsics_inv = np.linalg.inv(intrinsics)
 
